@@ -1,0 +1,132 @@
+%% MAIN PROP - Static performance
+clc; clear; fclose all;
+
+% Add folders to path
+folder = fileparts(which(mfilename));
+addpath(genpath(folder));
+
+%% geom
+
+% Metric units
+testProp.B       = 2;
+testProp.D       = 5.0;
+testProp.x       = [0.20 0.25 0.30 0.35 0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75 0.80 0.85 0.90 0.95 0.99];
+testProp.c_D     = [0.0601 0.0744 0.0802 0.0830 0.0845 0.0838 0.0816 0.0787 0.0744 0.0702 0.0659 0.0608 0.0558 0.0501 0.0441 0.0365 0.0286];
+testProp.c       = testProp.c_D*testProp.D;
+testProp.r       = testProp.x.*testProp.D/2;
+testProp.pitch75 = 0.25; 
+testProp.betadeg = atand(testProp.pitch75./(2*pi*testProp.r));
+testProp.x_beta  = 0.75;
+testProp.beta    = deg2rad(testProp.betadeg);
+testProp.sigma   = testProp.B.*testProp.c./(2*pi.*testProp.r);
+testProp.x_hub   = 0.15;
+testProp.airfoil = 'ara-d10.dat';
+testProp.unit_system = 'metric';
+
+%%%% Test Prop - Static - metric
+propData = testProp;
+D = propData.D;
+B = propData.B;
+h = 1500; % 1500 m ASL
+unit_system = propData.unit_system;
+x_hub = propData.x_hub;
+x = propData.x;
+airfoil = propData.airfoil;
+
+inputs.D = D; inputs.B = B; inputs.h = h; inputs.unit_system = unit_system; inputs.airfoil = airfoil;
+
+T_offset = 0; % 10 for ISA+10, or -10 for ISA-10 for example
+rho = ISA(h,T_offset,unit_system);
+polares  = 1;
+
+
+% Performance
+polars = 0;
+V = 0.3; % V=0 yields division by zero
+rpm = 100:100:1000;
+n = rpm/60;
+beta_ref_deg = propData.betadeg;
+x_beta_ref = propData.x_beta;
+
+% init vars
+Ct0 = zeros(length(n),1); Cp0 = zeros(length(n),1); P0 = zeros(length(n),1);
+Q0 = zeros(length(n),1); T0 = zeros(length(n),1); FM = zeros(length(n),1);
+
+
+% Performance
+run = 0;
+if run
+    for i = 1:length(n)
+        tic
+
+        if i > 1
+            polars = 0;
+        end
+        inputs.n = n(i);
+        beta_ref_deg = interp1(propData.x,propData.betadeg,x_beta_ref);
+        an = criglerPerf(inputs,propData,polars,V,beta_ref_deg,x_beta_ref,'static');
+
+        Ct0(i) = an.Ct;
+        Cp0(i) = an.Cp;
+        Cq0(i) = an.Cq;
+        P0(i) = an.P;
+        Q0(i) = an.Q;
+        T0(i) = an.T;
+        toc
+    end
+    save('results/static_results.mat','Ct0','Cp0','Cq0','T0','Q0','P0','rpm')
+else
+    load('results/static_results.mat','Ct0','Cp0','Cq0','T0','Q0','P0','rpm')
+end
+
+%% Plots
+
+set(groot,'defaultAxesTickLabelInterpreter','latex'); 
+set(groot,'defaulttextinterpreter','latex');
+% fontBold = 'bold';
+fontSize = 14;
+lgdSize = 14;
+solidLine = '-';
+lineWidth = 1;
+% lineVec = {'-','--',':','-.'};
+colorVec = {'k','r','b','g','m','c','#D95319','#7E2F8E'};
+markerColorVec = {'k','r','b','g','m','c','#D95319','#7E2F8E'};
+markerVec = {'o','s','^','d','v','+','x','*'};
+markerQuantity = 10;
+
+
+fig = figure(1);
+title = strcat('Test Prop - Static Performance');
+sgtitle(title,'FontSize',16);
+
+subplot(121)
+hold on
+plot(rpm,T0/9.80,...
+    'LineStyle',solidLine, ...
+    'Marker','o',...
+    'Color',colorVec{3}, ...
+    'LineWidth',lineWidth);
+xlabel('RPM','Interpreter','Latex','FontSize',fontSize);
+ylabel('$T$ [kgf]','Interpreter','Latex','FontSize',fontSize);
+grid on; grid minor;
+% xlim([1000 5500])
+% ylim([0 35])
+ax = gca;
+ax.FontSize = 18;
+
+subplot(122)
+hold on
+plot(rpm,P0/1e3,...
+    'LineStyle',solidLine, ...
+    'Marker','o',...
+    'Color',colorVec{3}, ...
+    'LineWidth',lineWidth);
+xlabel('RPM','Interpreter','Latex','FontSize',fontSize);
+ylabel('$P$ [kW]','Interpreter','Latex','FontSize',fontSize);
+grid on; grid minor;
+% xlim([1000 5500])
+ax = gca;
+ax.FontSize = 18;
+
+pos = [777         503        1036         472];
+set(fig,'position',pos);

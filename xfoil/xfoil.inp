@@ -1,0 +1,41 @@
+load ara-d10.dat
+gdes
+lera 1 0
+
+oper
+iter
+150
+
+
+ppar
+n
+200
+
+
+ppar
+t
+1
+
+
+
+
+oper
+re 361099
+mach 0.0587085
+visc
+cinc
+pacc
+xfoil.polar
+
+aseq 0.0000 -4.0000 -0.2500
+init
+aseq 0.0000 20.0000 0.2500
+psor
+1
+prem
+0
+pacc
+pwrt 1
+
+
+q
